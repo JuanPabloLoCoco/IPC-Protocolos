@@ -6,7 +6,7 @@
 /*1024 - 512 - 2048 */
 #define BUFFER_SIZE 1024
 
-int bitParity(char * number);
+int bitParity(char * s); 
 
 static void childProcess(char * command);
 

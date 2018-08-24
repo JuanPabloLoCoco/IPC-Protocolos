@@ -14,21 +14,16 @@ static int pipePtoC [2] = {-1,-1};
 static int stdinFD = STDIN_FILENO;
 static int stdoutFD = STDOUT_FILENO;
 
-int bitParity(char * number) {
-
-  int b = 1;
-
-  b = b ^ *(number);
-  b = b ^ *(number + 1);
-  b = b ^ *(number + 2);
-  b = b ^ *(number + 3);
-  b = b ^ *(number + 4);
-  b = b ^ *(number + 5);
-  b = b ^ *(number + 6);
-  b = b ^ *(number + 7);
-
-  return ((~b) & 1);
-
+/*code taken from stackoverflow*/
+int bitParity(char * s)
+{
+  int ret = 0;
+  while(*s)
+  {
+    ret = ret ^ *s;
+    s++;
+  }
+  return ret;
 }
 
 int main (int argc, char* argv[])
