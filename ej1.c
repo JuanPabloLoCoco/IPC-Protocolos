@@ -100,10 +100,11 @@ void parentProcess(int pipeCtoP[], int pipePtoC[], int bufferSize)
   int pid = fork();
 
   if(pid == 0){
-    while((bytesRead = read(pipeCtoP[READ], buffer, bufferSize)) > 0){
-      outputParity ^= bitParity(buffer);
-      printf("%s ",buffer);
-    }
+    outputParity = copy_rw_parity(pipeCtoP[READ], stdoutFD, bufferSize, outputParity);
+    // while((bytesRead = read(pipeCtoP[READ], buffer, bufferSize)) > 0){
+    //   outputParity ^= bitParity(buffer);
+    //   printf("%s ",buffer);
+    // }
   }else{
     /* %02 imprime al menos 2 digitos, si hay menos de 2 digitos pone un 0 adelante */
     fprintf(stderr, "in parity: 0x%02X\n", inputParity);
@@ -111,7 +112,7 @@ void parentProcess(int pipeCtoP[], int pipePtoC[], int bufferSize)
   }
 
 
-  //outputParity = copy_rw_parity(pipeCtoP[READ], stdoutFD, bufferSize, outputParity);
+
 
 
 
@@ -129,7 +130,7 @@ void initializePipes()
 
 int
 copy_rw_parity(const int fromfd, const int tofd, unsigned int buffsize, int parity) {
-    char buf[4096];
+    char buf[buffsize];
     ssize_t nread;
 
     if(buffsize > sizeof(buf)) {
