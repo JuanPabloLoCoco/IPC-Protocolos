@@ -1,7 +1,12 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
+#include <stdlib.h>
+#include <errno.h>
 #include <string.h>
+
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "ej1.h"
 
 static int pipeCtoP [2] = {-1,-1};
@@ -93,16 +98,26 @@ void parentProcess(int pipeCtoP[], int pipePtoC[], int bufferSize)
   close(pipeCtoP[WRITE]);
   close(pipePtoC[READ]);
 
-  while((bytesRead = read(STDIN_FILENO, buffer, bufferSize - 1)) > 0){
-    buffer[bytesRead] = 0;
+  while((bytesRead = read(STDIN_FILENO, buffer, bufferSize)) > 0){
     inputParity ^= bitParity(buffer);
-    write(pipePtoC[WRITE], buffer, bytesRead);
+    char *out_ptr = buffer;
+    ssize_t nwritten;
+    /*code taken from the copy.c file given in class*/
+    do{
+      nwritten = write(pipePtoC[WRITE], buffer, bytesRead);
+
+      if(nwritten >= 0) {
+        bytesRead -=nwritten;
+        out_ptr += nwritten;
+      }else if (errno != EINTR){
+        printf("ERROR\n");
+      }
+    }while(bytesRead > 0);
   }
 
   close(pipePtoC[WRITE]);
 
-  while((bytesRead = read(pipeCtoP[READ], buffer, bufferSize - 1)) > 0){
-    buffer[bytesRead] = 0;
+  while((bytesRead = read(pipeCtoP[READ], buffer, bufferSize)) > 0){
     outputParity ^= bitParity(buffer);
     printf("%s ",buffer);
   }
