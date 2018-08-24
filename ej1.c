@@ -93,35 +93,28 @@ void parentProcess(int pipeCtoP[], int pipePtoC[], int bufferSize)
   close(pipeCtoP[WRITE]);
   close(pipePtoC[READ]);
 
-  while((bytesRead = read(STDIN_FILENO, buffer, bufferSize)) > 0){
-    inputParity ^= bitParity(buffer);
-    char *out_ptr = buffer;
-    ssize_t nwritten;
-    /*code taken from the copy.c file given in class*/
-    do{
-      nwritten = write(pipePtoC[WRITE], buffer, bytesRead);
+  inputParity = copy_rw_parity(STDIN_FILENO, pipePtoC[WRITE], bufferSize, inputParity);
 
-      if(nwritten >= 0) {
-        bytesRead -=nwritten;
-        out_ptr += nwritten;
-      }else if (errno != EINTR){
-        printf("ERROR\n");
-      }
-    }while(bytesRead > 0);
-  }
 
   close(pipePtoC[WRITE]);
+  int pid = fork();
 
-  while((bytesRead = read(pipeCtoP[READ], buffer, bufferSize)) > 0){
-    outputParity ^= bitParity(buffer);
-    printf("%s ",buffer);
+  if(pid == 0){
+    while((bytesRead = read(pipeCtoP[READ], buffer, bufferSize)) > 0){
+      outputParity ^= bitParity(buffer);
+      printf("%s ",buffer);
+    }
+  }else{
+    /* %02 imprime al menos 2 digitos, si hay menos de 2 digitos pone un 0 adelante */
+    fprintf(stderr, "in parity: 0x%02X\n", inputParity);
+    fprintf(stderr, "out parity: 0x%02X\n", outputParity);
   }
 
-  outputParity = outputParity ^ '\n';
 
-  /* %02 imprime al menos 2 digitos, si hay menos de 2 digitos pone un 0 adelante */
-  fprintf(stderr, "in parity: 0x%02X\n", inputParity);
-  fprintf(stderr, "out parity: 0x%02X\n", outputParity);
+  //outputParity = copy_rw_parity(pipeCtoP[READ], stdoutFD, bufferSize, outputParity);
+
+
+
 
 }
 
@@ -132,4 +125,35 @@ void initializePipes()
     fprintf(stderr, "Error building pipes\n");
     exit(1);
   }
+}
+
+int
+copy_rw_parity(const int fromfd, const int tofd, unsigned int buffsize, int parity) {
+    char buf[4096];
+    ssize_t nread;
+
+    if(buffsize > sizeof(buf)) {
+        fprintf(stderr, "buffsize should be <= : %lu\n", sizeof(buf));
+        return 0;
+    }
+    while (nread = read(fromfd, buf, buffsize), nread > 0) {
+        char *out_ptr = buf;
+        ssize_t nwritten;
+        parity = bitParity(buf);
+        do {
+            nwritten = write(tofd, out_ptr, nread);
+
+            if (nwritten >= 0) {
+                nread -= nwritten;
+                out_ptr += nwritten;
+            } else if (errno != EINTR) {
+                goto error;
+            }
+        } while (nread > 0);
+    }
+    error:
+        if(errno != 0) {
+           fprintf(stderr, "Failed to copy: %s\n", strerror(errno));
+        }
+    return parity;
 }
